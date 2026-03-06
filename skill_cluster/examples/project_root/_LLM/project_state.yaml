@@ -1,0 +1,7 @@
+project_name: example_project
+current_stage: implementation
+current_task: task_03
+progress: 35%
+active_skill: implementation-skill
+last_updated: 2026-03-06
+notes: implementing websocket authentication

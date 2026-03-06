@@ -1,0 +1,136 @@
+# start.py 使用文档（固定操作逻辑）
+
+`start.py` 是统一入口脚本，提供两个固定职责：
+
+1. `init`：仅在**当前项目路径**初始化工程目录和文件。
+2. `install`：仅将 skills 安装到 Codex **全局** skills 目录。
+
+不允许将 skills 安装到某软件工程项目根目录下。
+
+## 1. 命令总览
+
+```bash
+python3 start.py init [options]
+python3 start.py install [options]
+```
+
+## 2. init 模式（当前项目初始化）
+
+用途：在你当前所在项目目录中创建软件工程流程所需目录和文件。
+
+### 2.1 基本用法
+
+```bash
+python3 start.py init
+```
+
+### 2.2 关键参数
+
+- `--project-name <name>`：写入 `_LLM/project_state.yaml` 的项目名
+- `--with-example-docs`：用示例填充 `docs/idea.md`、`docs/problem.md`、`docs/spec.md`、`docs/architecture.md`
+- `--minimal`：仅初始化 `_LLM/*.yaml + docs/tasks.md`
+- `--force`：覆盖已存在的受管文件
+- `--dry-run`：只预览，不落盘
+
+### 2.3 init 的反向操作
+
+```bash
+python3 start.py init --undo
+```
+
+行为：删除 `init` 管理的文件，并尝试删除空目录（`docs/`、`docs_issue/`、`_LLM/`）。
+
+- 默认（非 `--minimal`）会回滚完整初始化文件集。
+- `--minimal --undo` 只回滚最小文件集（`_LLM/*.yaml + docs/tasks.md`）。
+- 可配合 `--dry-run` 预览删除清单。
+
+### 2.4 init 生成的 Issue 相关资产
+
+- `docs/issue-file-template.md`：问题文件模板（不会放在 `docs_issue/` 内）。
+- `docs_issue/.gitkeep`：空目录占位文件。
+
+`docs_issue/` 目录第一层仅用于真实问题文件，命名必须符合：
+
+```text
+<status>__<issue_id>__<summary>.md
+```
+
+状态值仅允许：
+`waiting_user`、`approved`、`in_progress`、`verifying`、`resolved`、`deferred`、`rejected`、`archived`。
+
+状态变更必须通过重命名文件完成（文件名状态是唯一真值来源）。
+
+## 3. install 模式（全局 skills 安装）
+
+用途：将 skills 安装到 Codex 全局目录：
+
+```text
+~/.codex/skills
+```
+
+脚本会固定写入全局目录，不提供 `--dest` 或项目级目标目录参数。
+
+### 3.1 基本用法
+
+```bash
+python3 start.py install
+```
+
+### 3.2 参数
+
+- `--source <path>`：skill 源目录（默认 `<script_dir>/skill_cluster`）
+- `--method copy|auto|symlink|junction`：安装方式（默认 `copy`）
+- `--only <skill-name>`：只安装指定 skill（可重复）
+- `--list`：仅列出可安装 skill 名称
+- `--force`：覆盖已存在 skill 目录
+- `--dry-run`：只预览，不落盘
+
+### 3.3 install 的反向操作
+
+```bash
+python3 start.py install --undo
+```
+
+行为：从全局目录卸载本体系技能。
+
+- 不加 `--only`：卸载当前源目录发现的全部 skill。
+- 加 `--only`：仅卸载指定 skill。
+- 可配合 `--dry-run` 预览删除清单。
+
+示例：
+
+```bash
+python3 start.py install --undo
+python3 start.py install --undo --only task-engine --only issue-engine
+python3 start.py install --undo --dry-run
+```
+
+## 4. 安装方式建议
+
+- 默认推荐：`copy`
+  - 最稳妥，不依赖软链接权限。
+- 自动降级：`auto`
+  - Windows：`symlink -> junction -> copy`
+  - Linux/macOS：`symlink -> copy`
+
+## 5. 常见问题
+
+### 5.1 为什么 init 不再复制 skill_cluster 到项目根目录
+
+因为操作逻辑已固化：
+- `init` 只做项目目录初始化。
+- `install` 才负责全局 skills 安装。
+
+### 5.2 技能安装/卸载后 Codex 没变化
+
+重启 Codex 后再使用。
+
+### 5.3 `--only` 报未知 skill
+
+先执行：
+
+```bash
+python3 start.py install --list
+```
+
+确认名称后再安装或卸载。

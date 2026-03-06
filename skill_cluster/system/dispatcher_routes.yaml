@@ -1,0 +1,18 @@
+routes:
+  idea: idea-clarification-skill
+  problem_definition: problem-definition-skill
+  requirements: requirements-analysis-skill
+  architecture: architecture-design-skill
+  module_design: module-design-skill
+  task_planning: task-planning-skill
+  implementation:
+    - task-engine
+    - implementation-skill
+  review: code-review-skill
+  testing: testing-skill
+  issue_fixing:
+    - issue-engine
+    - implementation-skill
+  refactoring: refactoring-skill
+  release: release-management-skill
+  iteration: iteration-planning-skill

@@ -1,0 +1,60 @@
+states:
+  - idea
+  - problem_definition
+  - requirements
+  - architecture
+  - module_design
+  - task_planning
+  - implementation
+  - review
+  - testing
+  - issue_fixing
+  - refactoring
+  - release
+  - iteration
+transitions:
+  - from: idea
+    to: problem_definition
+    condition: docs/idea.md defined
+  - from: problem_definition
+    to: requirements
+    condition: docs/problem.md defined
+  - from: requirements
+    to: architecture
+    condition: docs/spec.md approved
+  - from: architecture
+    to: module_design
+    condition: docs/architecture.md approved
+  - from: module_design
+    to: task_planning
+    condition: docs/module_design.md approved
+  - from: task_planning
+    to: implementation
+    condition: docs/tasks.md ready and task_state initialized
+  - from: implementation
+    to: review
+    condition: current task code completed
+  - from: review
+    to: testing
+    condition: no blocker/high review issue
+  - from: review
+    to: issue_fixing
+    condition: blocker/high issue found
+  - from: testing
+    to: refactoring
+    condition: acceptance tests pass
+  - from: testing
+    to: issue_fixing
+    condition: failing test or regression
+  - from: issue_fixing
+    to: review
+    condition: fix submitted
+  - from: refactoring
+    to: release
+    condition: regression checks pass
+  - from: release
+    to: iteration
+    condition: release checklist done
+  - from: iteration
+    to: idea
+    condition: next cycle created
