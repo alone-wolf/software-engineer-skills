@@ -10,7 +10,7 @@ software-engineering-workflow
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.1.0`
-- cluster_version: `1.1.0`
+- cluster_version: `1.2.0`
 
 ## Purpose
 - Control lifecycle execution from `idea` to `iteration`.
@@ -25,6 +25,7 @@ software-engineering-workflow
 ## Inputs
 - `_LLM/project_state.yaml`
 - `_LLM/task_state.yaml`
+- `_LLM/git_state.yaml`
 - `docs/idea.md`, `docs/problem.md`, `docs/spec.md`, `docs/architecture.md`, `docs/tasks.md`
 - `docs_issue/*.md`
 
@@ -40,11 +41,13 @@ software-engineering-workflow
 4. Select next stage according to state machine rules.
 5. Update `active_skill`, `last_updated`, `notes`, and optional `current_stage`.
 6. Hand off to `skill-dispatcher` for concrete skill execution.
+7. At stage exit gates (task completed / issue resolved / release checkpoint), trigger `git-commit-push-skill`.
 
 ## Constraints
 - Do not infer stage from file existence alone.
 - Do not bypass `requirements` or `task_planning` before implementation.
 - Route review/testing defects to `issue-engine` before release and enforce filename-driven issue states.
+- Respect `_LLM/git_state.yaml.push_mode`; do not force push when remote is unavailable.
 
 ## Examples
 - Input: `current_stage: task_planning` and `docs/tasks.md` ready.

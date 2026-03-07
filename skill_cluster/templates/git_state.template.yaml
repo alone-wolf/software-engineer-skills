@@ -1,0 +1,9 @@
+enabled: true
+default_branch: main
+auto_commit: true
+push_mode: if_remote
+commit_message_convention: conventional_commits
+last_commit: ""
+last_push_status: never
+last_updated: 2026-03-07
+notes: ""

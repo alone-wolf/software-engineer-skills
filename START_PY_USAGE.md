@@ -27,6 +27,8 @@ python3 start.py init
 ### 2.2 关键参数
 
 - `--project-name <name>`：写入 `_LLM/project_state.yaml` 的项目名
+- `--no-git`：跳过 git 仓库初始化，并将 `_LLM/git_state.yaml.enabled` 置为 `false`
+- `--git-main-branch <name>`：初始化 git 仓库时使用的默认分支名（默认 `main`）
 - `--with-example-docs`：用示例填充 `docs/idea.md`、`docs/problem.md`、`docs/spec.md`、`docs/architecture.md`
 - `--minimal`：仅初始化 `_LLM/*.yaml + docs/tasks.md`
 - `--force`：覆盖已存在的受管文件
@@ -44,6 +46,7 @@ python3 start.py init --undo
 - 默认（非 `--minimal`）会回滚完整初始化文件集。
 - `--minimal --undo` 只回滚最小文件集（`_LLM/*.yaml + docs/tasks.md`）。
 - 可配合 `--dry-run` 预览删除清单。
+- 非交互环境执行 `init --undo` 时，需显式加 `--yes`。
 
 ### 2.4 init 生成的 Issue 相关资产
 
@@ -59,6 +62,14 @@ python3 start.py init --undo
 状态值与字段结构以初始化生成的 `docs/issue-file-template.md` 为准。
 
 状态变更必须通过重命名文件完成（文件名状态是唯一真值来源）。完整规则见 `skill_cluster/system/issue-engine/SKILL.md`。
+
+### 2.5 init 生成的 Git 相关资产
+
+- `_LLM/git_state.yaml`：Git 自动提交策略状态文件。
+- 默认会在当前目录检查并初始化 Git 仓库：
+  - 已存在仓库：不重复初始化
+  - 不存在仓库：创建并设置默认分支（默认 `main`）
+- 可用 `--no-git` 跳过初始化。
 
 ## 3. install 模式（全局 skills 安装）
 

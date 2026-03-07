@@ -10,7 +10,7 @@ release-management-skill
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.0.0`
-- cluster_version: `1.1.0`
+- cluster_version: `1.2.0`
 
 ## Purpose
 - 管理发布门禁与版本产物。
@@ -18,4 +18,5 @@ release-management-skill
 ## Operating Procedure
 1. 检查测试与 Issue 状态。
 2. 生成发布说明与版本记录。
-3. 更新阶段到 `iteration`。
+3. 调用 `git-commit-push-skill` 生成发布检查点 commit（push 按 `_LLM/git_state.yaml` 策略）。
+4. 更新阶段到 `iteration`。

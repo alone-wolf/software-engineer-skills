@@ -21,6 +21,7 @@
 4. One-way Stage Gate：阶段切换有进入/退出条件，减少回滚混乱。
 5. Issue Closed Loop：发现问题必须进入 `docs_issue/` 并复检关闭。
 6. Minimal Process：仅保留单人开发必要控制点。
+7. VCS Traceability：关键阶段出口应自动生成可追踪 git commit。
 
 ## 2. Skill Architecture
 
@@ -32,6 +33,7 @@
 5. Phase Skills：阶段技能，生成文档/代码/测试。
 6. Utility Skills：横切能力，如安全、性能、重构、文档。
 7. Artifact Layer：项目资产层，承接所有落盘产物。
+8. Git Ops：关键节点自动提交与可选推送策略。
 
 ### 2.2 组件职责
 
@@ -43,6 +45,7 @@
 | Issue Engine | 问题登记、整改、复检 | 测试/审计发现项 | `docs_issue/<status>__<issue_id>__<summary>.md`、状态变更记录 |
 | Phase Skills | 每阶段产出工程资产 | 当前阶段输入文档 | `docs/*.md`、`src/*`、`tests/*` |
 | Utility Skills | 提供横向质量增强 | 代码、测试、指标 | 审计报告、性能报告、重构建议 |
+| Git Ops | 提交与推送策略执行 | git 变更、`_LLM/git_state.yaml` | commit 记录、可选 push 结果 |
 | Artifact Layer | 统一资产存储 | 全部流程输入输出 | 规范化工程文档与代码资产 |
 
 ## 3. Skill Catalog（建议清单）
@@ -91,6 +94,7 @@
 | `performance-analysis-skill` | 性能瓶颈定位 | 响应慢、资源高时 | profiler/benchmark 数据 | 性能报告、优化建议 | 建基线 -> 定位热点 -> 验证提升 |
 | `documentation-generation-skill` | 自动化文档生产 | 阶段产出缺文档时 | 现有代码与规格 | API/模块/运维文档 | 提取事实 -> 生成文档 |
 | `refactor-helper-skill` | 辅助重构策略与脚手架 | 大规模重构前 | 架构与调用关系 | 重构计划、迁移步骤 | 风险分层 -> 渐进迁移 |
+| `git-commit-push-skill` | 统一 commit/push 自动化策略 | 任务完成、问题解决、发布门禁 | git diff、`git_state.yaml` | conventional commit、可选 push 结果 | 识别上下文 -> 提交 -> 按策略 push |
 
 ## 4. Skill Invocation Order（标准流程）
 
@@ -102,11 +106,14 @@
 -> `task-planning-skill`
 -> `task-engine`
 -> `implementation-skill`
+-> `git-commit-push-skill`（task completed）
 -> `code-review-skill`
 -> `testing-skill`
 -> `issue-engine`
+-> `git-commit-push-skill`（issue resolved）
 -> `refactoring-skill`
 -> `release-management-skill`
+-> `git-commit-push-skill`（release checkpoint）
 -> `iteration-planning-skill`
 
 ### 4.1 阶段转换逻辑
@@ -155,7 +162,8 @@
 ### 6.1 输入
 1. `_LLM/project_state.yaml`
 2. `_LLM/task_state.yaml`（可选）
-3. `docs/tasks.md`（可选）
+3. `_LLM/git_state.yaml`（可选）
+4. `docs/tasks.md`（可选）
 
 ### 6.2 调度策略
 1. 读取 `current_stage`。
@@ -191,6 +199,27 @@ notes: implementing websocket authentication
 2. 根据 `current_stage` 选择 Skill。
 3. Skill 执行后必须更新该文件。
 4. 禁止通过“文件是否存在”推断阶段。
+
+## 7.2 Git State File Design
+
+路径：`_LLM/git_state.yaml`
+
+```yaml
+enabled: true
+default_branch: main
+auto_commit: true
+push_mode: if_remote
+commit_message_convention: conventional_commits
+last_commit: ""
+last_push_status: never
+last_updated: 2026-03-07
+notes: ""
+```
+
+会话规则：
+1. 若 `enabled: true`，阶段出口按策略触发 `git-commit-push-skill`。
+2. `push_mode` 支持 `never/if_remote/always`。
+3. push 失败不应回滚已完成 commit，但必须记录状态。
 
 ## 8. Task Engine Design
 
@@ -274,6 +303,7 @@ skill_cluster/
     performance-analysis-skill/SKILL.md
     documentation-generation-skill/SKILL.md
     refactor-helper-skill/SKILL.md
+    git-commit-push-skill/SKILL.md
   system/
     task-engine/SKILL.md
     issue-engine/SKILL.md
@@ -305,6 +335,7 @@ project_root/
   _LLM/
     project_state.yaml
     task_state.yaml
+    git_state.yaml
 ```
 
 ## 12. Skill Interaction Model
@@ -316,6 +347,7 @@ project_root/
 5. Code Review/Testing 发现问题后交给 Issue Engine。
 6. Utility Skill 在任意阶段按需插入，结果回写 Artifact Layer。
 7. 全流程以 `_LLM/project_state.yaml` 作为单一事实源。
+8. Git 相关动作由 `git-commit-push-skill` 在阶段出口统一执行并回写 `_LLM/git_state.yaml`。
 
 ## 13. Codex Operating Protocol（运行规则）
 
@@ -326,6 +358,7 @@ project_root/
 5. 开发遵循 task-driven development：先任务、后实现、再审查与测试。
 6. 每次会话结束前必须更新 `_LLM/project_state.yaml` 与 `_LLM/task_state.yaml`。
 7. 问题状态以文件名为唯一真值来源；状态变更必须重命名问题文件。
+8. 任务完成、问题关闭、发布检查点应触发自动 commit（push 依据 `git_state.yaml.push_mode`）。
 
 ## 14. Skill Template（模板）
 

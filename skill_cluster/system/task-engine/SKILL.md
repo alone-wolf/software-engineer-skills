@@ -10,7 +10,7 @@ task-engine
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.0.0`
-- cluster_version: `1.1.0`
+- cluster_version: `1.2.0`
 
 ## Purpose
 - Keep implementation strictly task-driven.
@@ -29,6 +29,7 @@ task-engine
 ## Outputs
 - Updated `_LLM/task_state.yaml`
 - Updated `_LLM/project_state.yaml.current_task`
+- Trigger signal for `git-commit-push-skill` on task completion
 - Optional task progression notes in `notes`
 
 ## Operating Procedure
@@ -40,6 +41,7 @@ task-engine
 6. Mark state as `in_progress` and set `current_task`.
 7. After implementation/test confirmation, move task to `completed_tasks` and choose next.
 8. Sync `current_task` back to `_LLM/project_state.yaml`.
+9. When a task transitions to completed, call `git-commit-push-skill`.
 
 ## Constraints
 - Do not execute tasks absent from `docs/tasks.md`.

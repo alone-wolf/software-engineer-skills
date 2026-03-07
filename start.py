@@ -58,6 +58,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Project name for _LLM/project_state.yaml (default: current directory name).",
     )
+    init_parser.add_argument(
+        "--no-git",
+        action="store_true",
+        help="Skip git repository initialization and set git_state.enabled to false.",
+    )
+    init_parser.add_argument(
+        "--git-main-branch",
+        default="main",
+        help="Default branch name when initializing a new git repository (default: main).",
+    )
     init_doc_group = init_parser.add_mutually_exclusive_group()
     init_doc_group.add_argument(
         "--with-example-docs",
@@ -67,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_doc_group.add_argument(
         "--minimal",
         action="store_true",
-        help="Initialize only _LLM state files and docs/tasks.md (skip docs_issue and design docs).",
+        help="Initialize only _LLM state files (project/task/git) and docs/tasks.md.",
     )
     init_parser.add_argument(
         "--undo",
@@ -264,6 +274,26 @@ def with_updated_task_state_template(content: str, today: str) -> str:
     return "\n".join(updated) + "\n"
 
 
+def with_updated_git_state_template(
+    content: str,
+    today: str,
+    branch: str,
+    enabled: bool,
+) -> str:
+    lines = content.splitlines()
+    updated: list[str] = []
+    for line in lines:
+        if line.startswith("enabled:"):
+            updated.append(f"enabled: {'true' if enabled else 'false'}")
+        elif line.startswith("default_branch:"):
+            updated.append(f"default_branch: {branch}")
+        elif line.startswith("last_updated:"):
+            updated.append(f"last_updated: {today}")
+        else:
+            updated.append(line)
+    return "\n".join(updated) + "\n"
+
+
 def placeholder_doc(title: str) -> str:
     return f"# {title}\n\n待补充。\n"
 
@@ -273,6 +303,46 @@ def remove_path(path: Path) -> None:
         path.unlink()
     elif path.exists():
         shutil.rmtree(path)
+
+
+def run_git(args: list[str], cwd: Path) -> tuple[int, str]:
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return 127, "git command not found"
+    output = (proc.stdout or proc.stderr or "").strip()
+    return proc.returncode, output
+
+
+def is_git_repo(path: Path) -> bool:
+    code, _ = run_git(["rev-parse", "--is-inside-work-tree"], path)
+    return code == 0
+
+
+def ensure_git_repo(path: Path, main_branch: str) -> tuple[str, str]:
+    if is_git_repo(path):
+        return "exists", "git repository already exists"
+
+    code, output = run_git(["init", "-b", main_branch], path)
+    if code == 0:
+        return "created", f"initialized with git init -b {main_branch}"
+
+    init_code, init_output = run_git(["init"], path)
+    if init_code != 0:
+        msg = init_output or output or "git init failed"
+        return "error", msg
+
+    ref_code, ref_output = run_git(["symbolic-ref", "HEAD", f"refs/heads/{main_branch}"], path)
+    if ref_code != 0:
+        msg = ref_output or "git symbolic-ref failed after git init"
+        return "error", msg
+
+    return "created", f"initialized with git init and HEAD -> {main_branch}"
 
 
 def parse_simple_key_value(content: str) -> dict[str, str]:
@@ -647,6 +717,7 @@ def handle_init(args: argparse.Namespace, script_root: Path) -> int:
         managed_files = [
             target_root / "_LLM" / "project_state.yaml",
             target_root / "_LLM" / "task_state.yaml",
+            target_root / "_LLM" / "git_state.yaml",
             target_root / "docs" / "tasks.md",
         ]
         if not args.minimal:
@@ -694,12 +765,19 @@ def handle_init(args: argparse.Namespace, script_root: Path) -> int:
 
     project_state_src = source_templates / "project_state.template.yaml"
     task_state_src = source_templates / "task_state.template.yaml"
+    git_state_src = source_templates / "git_state.template.yaml"
 
     project_state_content = with_updated_state_template(
         project_state_src.read_text(encoding="utf-8"), project_name, today
     )
     task_state_content = with_updated_task_state_template(
         task_state_src.read_text(encoding="utf-8"), today
+    )
+    git_state_content = with_updated_git_state_template(
+        git_state_src.read_text(encoding="utf-8"),
+        today=today,
+        branch=args.git_main_branch,
+        enabled=not args.no_git,
     )
 
     write_text_file(
@@ -718,6 +796,26 @@ def handle_init(args: argparse.Namespace, script_root: Path) -> int:
         args.dry_run,
         stats,
     )
+    write_text_file(
+        llm_dir / "git_state.yaml",
+        git_state_content,
+        target_root,
+        args.force,
+        args.dry_run,
+        stats,
+    )
+
+    git_status = "skipped"
+    git_note = "git initialization skipped by --no-git"
+    if not args.no_git:
+        if args.dry_run:
+            git_status = "planned"
+            git_note = f"would initialize git repository with default branch '{args.git_main_branch}' if needed"
+        else:
+            git_status, git_note = ensure_git_repo(target_root, args.git_main_branch)
+            if git_status == "error":
+                print(f"[ERROR] git initialization failed: {git_note}")
+                return 1
 
     copy_file(
         source_templates / "tasks-template.md",
@@ -772,6 +870,7 @@ def handle_init(args: argparse.Namespace, script_root: Path) -> int:
     mode = "DRY RUN" if args.dry_run else "DONE"
     print(f"[{mode}] Skills 集群初始化完成: {target_root}")
     print(f"project_name: {project_name}")
+    print(f"git: {git_status} ({git_note})")
     print_file_stats(stats)
 
     print("\nNext steps:")
@@ -779,13 +878,15 @@ def handle_init(args: argparse.Namespace, script_root: Path) -> int:
         print("1. 先完善 docs/tasks.md 的任务拆分与验收标准。")
         print("2. 每次 Codex 会话前先读取 _LLM/project_state.yaml。")
         print("3. 需要完整流程时，可补充 docs_issue/ 与 docs/spec/architecture 文档。")
+        print("4. 通过 _LLM/git_state.yaml 配置自动 commit/push 策略。")
     else:
         print("1. 根据业务完善 docs/idea.md、docs/problem.md、docs/spec.md。")
         print("2. 在 docs/tasks.md 拆分任务后，再进入 implementation 阶段。")
         print("3. 问题文件命名必须使用 <status>__<issue_id>__<summary>.md。")
         print("4. 状态集合与字段格式以 docs/issue-file-template.md 为准。")
         print("5. docs_issue 仅存放问题文件；状态变更必须通过重命名。")
-        print("6. 每次 Codex 会话前先读取 _LLM/project_state.yaml。")
+        print("6. 使用 git-commit-push-skill 在阶段退出点自动提交。")
+        print("7. 每次 Codex 会话前先读取 _LLM/project_state.yaml。")
 
     return 0
 

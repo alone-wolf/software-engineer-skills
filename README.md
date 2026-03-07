@@ -10,7 +10,7 @@
 
 1. 流程完整：覆盖 idea -> release -> iteration 的全生命周期。
 2. 架构清晰：已拆分 Workflow、Phase、Utility、System 四类 Skill。
-3. 状态驱动：通过 `_LLM/project_state.yaml`、`_LLM/task_state.yaml` 管理会话进度。
+3. 状态驱动：通过 `_LLM/project_state.yaml`、`_LLM/task_state.yaml`、`_LLM/git_state.yaml` 管理会话进度。
 4. 闭环治理：通过 `docs_issue/*.md` 做问题发现、修复、复检、关闭。
 5. 可复用模板：提供 task/issue/state/skill 模板与示例工程。
 
@@ -59,7 +59,11 @@ Issue 规则以 `skill_cluster/system/issue-engine/SKILL.md` 与 `skill_cluster/
 - 文件名中的 `status` 是唯一真值来源，状态流转必须通过重命名完成。
 - 完整状态集合与流转规则以 `skill_cluster/system/issue-engine/SKILL.md` 为准。
 
-### 5) State Machine
+### 5) Git Ops
+- 在关键阶段出口自动调用 `git-commit-push-skill`。
+- commit 使用 conventional commits，push 按策略可选执行（无 remote 时允许跳过）。
+
+### 6) State Machine
 - 状态机定义见 `skill_cluster/system/workflow_state_machine.yaml`。
 - 禁止跳过关键阶段（例如从需求前直接进入实现）。
 
@@ -74,6 +78,7 @@ Issue 规则以 `skill_cluster/system/issue-engine/SKILL.md` 与 `skill_cluster/
    - `skill_cluster/templates/skill-template.md`
    - `skill_cluster/templates/project_state.template.yaml`
    - `skill_cluster/templates/task_state.template.yaml`
+   - `skill_cluster/templates/git_state.template.yaml`
    - `skill_cluster/templates/tasks-template.md`
    - `skill_cluster/templates/issue-template.md`
 4. 示例工程：
@@ -108,6 +113,7 @@ Issue 规则以 `skill_cluster/system/issue-engine/SKILL.md` 与 `skill_cluster/
 - `performance-analysis-skill`
 - `documentation-generation-skill`
 - `refactor-helper-skill`
+- `git-commit-push-skill`
 
 ## 推荐执行顺序
 
@@ -120,11 +126,14 @@ idea-clarification-skill
 -> task-planning-skill
 -> task-engine
 -> implementation-skill
+-> git-commit-push-skill (task completed)
 -> code-review-skill
 -> testing-skill
 -> issue-engine
+-> git-commit-push-skill (issue resolved)
 -> refactoring-skill
 -> release-management-skill
+-> git-commit-push-skill (release checkpoint)
 -> iteration-planning-skill
 ```
 
@@ -136,6 +145,7 @@ idea-clarification-skill
 2. 初始化状态文件：
    - `_LLM/project_state.yaml`（参考 `project_state.template.yaml`）
    - `_LLM/task_state.yaml`（参考 `task_state.template.yaml`）
+   - `_LLM/git_state.yaml`（参考 `git_state.template.yaml`）
 3. 创建任务与文档：
    - `docs/idea.md`
    - `docs/problem.md`
@@ -147,7 +157,8 @@ idea-clarification-skill
    - Dispatcher 选择 Skill
    - 按 Task 实现/审查/测试
    - 发现问题写入 `docs_issue/`（文件名使用 `<status>__<issue_id>__<summary>.md`）
-   - 回写两个 state 文件
+   - 在阶段出口使用 `git-commit-push-skill` 自动 commit（push 按策略）
+   - 回写三个 state 文件
 
 ## 统一脚本入口
 
@@ -158,12 +169,13 @@ idea-clarification-skill
 
 固定规则：
 1. `init` 只创建当前项目所需目录和文件。
-2. `install` 只安装到 Codex 全局目录 `~/.codex/skills`。
-3. 不允许将 skills 安装到软件工程项目根目录。
-4. `init` 会生成 `docs/issue-file-template.md`，`docs_issue/` 仅用于真实问题文件。
-5. `install --undo` 仅删除通过“marker + SKILL name”校验为本项目来源的技能目录。
-6. `init --undo` 默认需要二次确认；非交互环境需显式 `--yes`。
-7. 支持反向操作：
+2. `init` 默认会检查并初始化 git 仓库（默认分支 `main`，可通过参数覆盖）。
+3. `install` 只安装到 Codex 全局目录 `~/.codex/skills`。
+4. 不允许将 skills 安装到软件工程项目根目录。
+5. `init` 会生成 `docs/issue-file-template.md`，`docs_issue/` 仅用于真实问题文件。
+6. `install --undo` 仅删除通过“marker + SKILL name”校验为本项目来源的技能目录。
+7. `init --undo` 默认需要二次确认；非交互环境需显式 `--yes`。
+8. 支持反向操作：
    - `python3 start.py init --undo`
    - `python3 start.py install --undo`
 

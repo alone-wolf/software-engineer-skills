@@ -10,7 +10,7 @@ issue-engine
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.1.0`
-- cluster_version: `1.1.0`
+- cluster_version: `1.2.0`
 
 ## Purpose
 - Standardize issue lifecycle with auditable, filename-driven state transitions.
@@ -29,6 +29,7 @@ issue-engine
 - New or updated `docs_issue/<status>__<issue_id>__<summary>.md`
 - State transition records and verification evidence
 - Release gate input for unresolved high-risk items
+- Trigger signal for `git-commit-push-skill` when issue reaches `resolved`
 
 ## Operating Procedure
 1. Ensure `docs_issue/` exists and only use first-level files for scanning and duplicate checks.
@@ -42,6 +43,7 @@ issue-engine
 9. Treat filename status as the source of truth; keep body `当前状态` synchronized.
 10. After fixes, validate each acceptance criterion with explicit evidence before moving to `resolved`.
 11. Reopen by renaming back to `waiting_user` if resolved/rejected/archived issue is raised again.
+12. On transition to `resolved`, invoke `git-commit-push-skill` for traceable closure commit.
 
 ## Constraints
 - Do not merge unrelated problems into one issue file.

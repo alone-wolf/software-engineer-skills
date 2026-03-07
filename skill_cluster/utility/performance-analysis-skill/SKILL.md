@@ -10,7 +10,7 @@ performance-analysis-skill
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.0.0`
-- cluster_version: `1.1.0`
+- cluster_version: `1.2.0`
 
 ## Purpose
 - 定位性能瓶颈并验证优化收益。

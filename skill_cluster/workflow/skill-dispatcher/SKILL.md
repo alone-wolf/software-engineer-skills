@@ -10,7 +10,7 @@ skill-dispatcher
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.1.0`
-- cluster_version: `1.1.0`
+- cluster_version: `1.2.0`
 
 ## Purpose
 - Map stage state to executable skill.
@@ -24,6 +24,7 @@ skill-dispatcher
 ## Inputs
 - `_LLM/project_state.yaml`
 - `_LLM/task_state.yaml`
+- `_LLM/git_state.yaml`
 - `docs/tasks.md` (when stage is `implementation`)
 
 ## Outputs
@@ -48,6 +49,10 @@ skill-dispatcher
 15. `release -> release-management-skill`
 16. `iteration -> iteration-planning-skill`
 17. Write selected skill to `active_skill` with updated timestamp.
+18. Apply post-stage hooks:
+19. `task_completed -> git-commit-push-skill`
+20. `issue_resolved -> git-commit-push-skill`
+21. `release_checkpoint -> git-commit-push-skill`
 
 ## Constraints
 - Do not dispatch implementation when `docs/tasks.md` missing.

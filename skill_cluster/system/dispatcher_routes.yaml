@@ -16,3 +16,10 @@ routes:
   refactoring: refactoring-skill
   release: release-management-skill
   iteration: iteration-planning-skill
+post_stage_hooks:
+  task_completed:
+    - git-commit-push-skill
+  issue_resolved:
+    - git-commit-push-skill
+  release_checkpoint:
+    - git-commit-push-skill
