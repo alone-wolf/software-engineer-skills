@@ -37,6 +37,12 @@ class InstallStats:
     warnings: list[str] = field(default_factory=list)
 
 
+MARKER_FILENAME = ".se_skill_cluster_marker"
+EXPECTED_CLUSTER_MARKER = "se-skill-cluster"
+EXPECTED_CLUSTER_NAME = "software-engineering-skill-cluster"
+EXPECTED_OWNER_PROJECT = "software_engineer_skills"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Unified tool for project initialization and Codex global skill installation."
@@ -67,6 +73,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--undo",
         action="store_true",
         help="Reverse init operation by removing managed files from current project directory.",
+    )
+    init_parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip interactive confirmation prompt for init --undo.",
     )
     init_parser.add_argument(
         "--force",
@@ -264,6 +275,85 @@ def remove_path(path: Path) -> None:
         shutil.rmtree(path)
 
 
+def parse_simple_key_value(content: str) -> dict[str, str]:
+    parsed: dict[str, str] = {}
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        parsed[key.strip()] = value.strip().strip("'\"")
+    return parsed
+
+
+def parse_skill_meta(skill_md_path: Path) -> dict[str, str]:
+    if not skill_md_path.exists():
+        return {}
+
+    parsed: dict[str, str] = {}
+    for raw_line in skill_md_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if line.startswith("name:"):
+            parsed["name"] = line.split(":", 1)[1].strip().strip("'\"")
+        elif line.startswith("- cluster_marker:"):
+            parsed["cluster_marker"] = line.split(":", 1)[1].strip().strip("'\"`")
+        elif line.startswith("- cluster_name:"):
+            parsed["cluster_name"] = line.split(":", 1)[1].strip().strip("'\"`")
+    return parsed
+
+
+def validate_uninstall_target(destination_dir: Path, expected_skill_name: str) -> tuple[bool, str]:
+    marker_path = destination_dir / MARKER_FILENAME
+    if not marker_path.exists():
+        return False, f"missing marker file '{MARKER_FILENAME}'"
+
+    marker_meta = parse_simple_key_value(marker_path.read_text(encoding="utf-8"))
+    if marker_meta.get("owner_project") != EXPECTED_OWNER_PROJECT:
+        return False, "marker owner_project mismatch"
+    if marker_meta.get("cluster_marker") != EXPECTED_CLUSTER_MARKER:
+        return False, "marker cluster_marker mismatch"
+    if marker_meta.get("cluster_name") != EXPECTED_CLUSTER_NAME:
+        return False, "marker cluster_name mismatch"
+    if marker_meta.get("skill_name") != expected_skill_name:
+        return False, "marker skill_name mismatch"
+
+    skill_md = destination_dir / "SKILL.md"
+    if not skill_md.exists():
+        return False, "missing SKILL.md"
+
+    skill_meta = parse_skill_meta(skill_md)
+    if skill_meta.get("name") != expected_skill_name:
+        return False, "SKILL.md name mismatch"
+    if skill_meta.get("cluster_marker") != EXPECTED_CLUSTER_MARKER:
+        return False, "SKILL.md cluster_marker mismatch"
+    if skill_meta.get("cluster_name") != EXPECTED_CLUSTER_NAME:
+        return False, "SKILL.md cluster_name mismatch"
+
+    return True, "ok"
+
+
+def validate_source_skill_for_install(source_dir: Path, expected_skill_name: str) -> tuple[bool, str]:
+    marker_path = source_dir / MARKER_FILENAME
+    if not marker_path.exists():
+        return False, f"missing source marker '{MARKER_FILENAME}'"
+
+    marker_meta = parse_simple_key_value(marker_path.read_text(encoding="utf-8"))
+    if marker_meta.get("owner_project") != EXPECTED_OWNER_PROJECT:
+        return False, "source marker owner_project mismatch"
+    if marker_meta.get("cluster_marker") != EXPECTED_CLUSTER_MARKER:
+        return False, "source marker cluster_marker mismatch"
+    if marker_meta.get("cluster_name") != EXPECTED_CLUSTER_NAME:
+        return False, "source marker cluster_name mismatch"
+    if marker_meta.get("skill_name") != expected_skill_name:
+        return False, "source marker skill_name mismatch"
+
+    skill_md = source_dir / "SKILL.md"
+    skill_meta = parse_skill_meta(skill_md)
+    if skill_meta.get("name") != expected_skill_name:
+        return False, "source SKILL.md name mismatch"
+    return True, "ok"
+
+
 def is_windows() -> bool:
     return os.name == "nt"
 
@@ -433,6 +523,9 @@ def run_install(
     ensure_install_root(destination_root, dry_run, stats)
 
     for skill_name, source_dir in selected.items():
+        valid_source, reason = validate_source_skill_for_install(source_dir, skill_name)
+        if not valid_source:
+            raise ValueError(f"{skill_name}: {reason}")
         install_one_skill(
             skill_name=skill_name,
             source_dir=source_dir,
@@ -541,6 +634,15 @@ def handle_init(args: argparse.Namespace, script_root: Path) -> int:
         if args.with_example_docs:
             print("[ERROR] --undo 与 --with-example-docs 不能同时使用。")
             return 1
+        if not args.dry_run and not args.yes:
+            if not sys.stdin.isatty():
+                print("[ERROR] init --undo 在非交互模式下需要 --yes 以确认删除。")
+                return 1
+            print("[CONFIRM] init --undo 将删除当前目录下受管文件与空目录。")
+            confirmed = input("输入 YES 确认继续: ").strip()
+            if confirmed != "YES":
+                print("[CANCELLED] 已取消 init --undo。")
+                return 1
 
         managed_files = [
             target_root / "_LLM" / "project_state.yaml",
@@ -681,11 +783,8 @@ def handle_init(args: argparse.Namespace, script_root: Path) -> int:
         print("1. 根据业务完善 docs/idea.md、docs/problem.md、docs/spec.md。")
         print("2. 在 docs/tasks.md 拆分任务后，再进入 implementation 阶段。")
         print("3. 问题文件命名必须使用 <status>__<issue_id>__<summary>.md。")
-        print(
-            "4. 合法状态: waiting_user/approved/in_progress/verifying/"
-            "resolved/deferred/rejected/archived。"
-        )
-        print("5. docs_issue 仅存放问题文件；模板请使用 docs/issue-file-template.md。")
+        print("4. 状态集合与字段格式以 docs/issue-file-template.md 为准。")
+        print("5. docs_issue 仅存放问题文件；状态变更必须通过重命名。")
         print("6. 每次 Codex 会话前先读取 _LLM/project_state.yaml。")
 
     return 0
@@ -732,6 +831,14 @@ def handle_install(args: argparse.Namespace, script_root: Path) -> int:
             exists = destination_dir.exists() or destination_dir.is_symlink()
             if not exists:
                 uninstall_stats.skipped.append(str(destination_dir))
+                continue
+
+            allowed, reason = validate_uninstall_target(destination_dir, skill_name)
+            if not allowed:
+                uninstall_stats.skipped.append(str(destination_dir))
+                uninstall_stats.warnings.append(
+                    f"{skill_name}: skip uninstall because {reason}."
+                )
                 continue
 
             if args.dry_run:

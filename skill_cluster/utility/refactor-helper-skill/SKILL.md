@@ -10,7 +10,7 @@ refactor-helper-skill
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.0.0`
-- cluster_version: `1.0.0`
+- cluster_version: `1.1.0`
 
 ## Purpose
 - 为复杂重构提供策略和迁移护栏。

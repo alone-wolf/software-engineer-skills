@@ -31,6 +31,7 @@ python3 start.py init
 - `--minimal`：仅初始化 `_LLM/*.yaml + docs/tasks.md`
 - `--force`：覆盖已存在的受管文件
 - `--dry-run`：只预览，不落盘
+- `--yes`：`init --undo` 时跳过二次确认（非交互环境执行回滚需显式指定）
 
 ### 2.3 init 的反向操作
 
@@ -55,10 +56,9 @@ python3 start.py init --undo
 <status>__<issue_id>__<summary>.md
 ```
 
-状态值仅允许：
-`waiting_user`、`approved`、`in_progress`、`verifying`、`resolved`、`deferred`、`rejected`、`archived`。
+状态值与字段结构以初始化生成的 `docs/issue-file-template.md` 为准。
 
-状态变更必须通过重命名文件完成（文件名状态是唯一真值来源）。
+状态变更必须通过重命名文件完成（文件名状态是唯一真值来源）。完整规则见 `skill_cluster/system/issue-engine/SKILL.md`。
 
 ## 3. install 模式（全局 skills 安装）
 
@@ -96,6 +96,11 @@ python3 start.py install --undo
 - 不加 `--only`：卸载当前源目录发现的全部 skill。
 - 加 `--only`：仅卸载指定 skill。
 - 可配合 `--dry-run` 预览删除清单。
+- 卸载前会校验目标 skill 目录是否同时满足：
+  - 存在本项目 marker 文件 `.se_skill_cluster_marker`
+  - `SKILL.md` 中 `name` 与目标 skill 名称一致
+  - marker 与 `SKILL.md` 的 cluster 标识匹配本体系
+- 不满足条件将 `skip` 并输出 warning，避免误删外部来源同名技能。
 
 示例：
 

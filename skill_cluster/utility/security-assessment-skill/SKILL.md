@@ -10,7 +10,7 @@ security-assessment-skill
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.0.0`
-- cluster_version: `1.0.0`
+- cluster_version: `1.1.0`
 
 ## Purpose
 - 识别安全风险并形成整改闭环。

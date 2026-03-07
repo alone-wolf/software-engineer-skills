@@ -10,7 +10,7 @@ module-design-skill
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.0.0`
-- cluster_version: `1.0.0`
+- cluster_version: `1.1.0`
 
 ## Purpose
 - 将架构落地到模块级接口与职责。

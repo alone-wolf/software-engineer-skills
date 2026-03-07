@@ -10,7 +10,7 @@ task-planning-skill
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
 - skill_version: `1.0.0`
-- cluster_version: `1.0.0`
+- cluster_version: `1.1.0`
 
 ## Purpose
 - Turn design artifacts into actionable implementation backlog.

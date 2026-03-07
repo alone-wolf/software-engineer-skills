@@ -229,41 +229,16 @@ last_updated: 2026-03-06
 路径：`docs_issue/`，每个问题一个 Markdown 文件。
 
 ### 9.2 Issue 模板
-```md
-# 问题 ID
-Q20260306-01
-
-# 当前状态
-waiting_user
-
-# 问题标题
-鉴权绕过风险
-
-# 问题摘要
-过期令牌放行风险
-
-# 问题描述
-...
-
-# 严重程度
-High
-
-# 核心证据路径
-src/ws/auth_middleware.ts
-
-# 验收标准
-1. 过期 token 握手必须失败并返回统一错误码。
-2. 回归测试覆盖成功/失败/过期三种路径并通过。
-```
+- 模板文件：`skill_cluster/templates/issue-template.md`
+- 初始化后项目内模板：`docs/issue-file-template.md`
+- 字段定义、时间格式、状态记录以模板为准，避免在多文档重复维护同一结构。
 
 ### 9.3 状态流
 文件命名格式：`<status>__<issue_id>__<summary>.md`
 
-合法状态集合：
-`waiting_user` -> `approved` -> `in_progress` -> `verifying` -> `resolved`
-
-扩展状态：
-`deferred`、`rejected`、`archived`
+- 状态机权威定义：`system/issue-engine/SKILL.md`
+- 默认流程：`waiting_user` -> `approved` -> `in_progress` -> `verifying` -> `resolved`
+- 扩展状态：`deferred`、`rejected`、`archived`
 
 ### 9.4 引擎职责
 1. 审查/测试发现问题时先做第一层去重扫描，再决定是否建单。
@@ -379,3 +354,10 @@ project_root/
 8. `phase/implementation-skill/SKILL.md`
 9. `phase/code-review-skill/SKILL.md`
 10. `phase/testing-skill/SKILL.md`
+
+## 16. Versioning Policy（版本策略）
+
+1. `skill_version`：按单个 skill 独立演进，允许不同 skill 使用不同版本号。
+2. `cluster_version`：表示技能集群整体版本，所有 `SKILL.md` 必须保持一致。
+3. 每次集群级规则或系统行为变更时，统一提升 `cluster_version`。
+4. 一致性检查命令：`python3 scripts/check_skill_versions.py`。
