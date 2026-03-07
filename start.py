@@ -324,25 +324,40 @@ def is_git_repo(path: Path) -> bool:
     return code == 0
 
 
-def ensure_git_repo(path: Path, main_branch: str) -> tuple[str, str]:
+def get_git_head_branch(path: Path) -> str | None:
+    code, output = run_git(["symbolic-ref", "--short", "HEAD"], path)
+    branch = output.strip()
+    if code == 0 and branch and branch != "HEAD":
+        return branch
+
+    code, output = run_git(["rev-parse", "--abbrev-ref", "HEAD"], path)
+    branch = output.strip()
+    if code == 0 and branch and branch != "HEAD":
+        return branch
+
+    return None
+
+
+def ensure_git_repo(path: Path, main_branch: str) -> tuple[str, str, str]:
     if is_git_repo(path):
-        return "exists", "git repository already exists"
+        current_branch = get_git_head_branch(path) or main_branch
+        return "exists", f"git repository already exists (HEAD={current_branch})", current_branch
 
     code, output = run_git(["init", "-b", main_branch], path)
     if code == 0:
-        return "created", f"initialized with git init -b {main_branch}"
+        return "created", f"initialized with git init -b {main_branch}", main_branch
 
     init_code, init_output = run_git(["init"], path)
     if init_code != 0:
         msg = init_output or output or "git init failed"
-        return "error", msg
+        return "error", msg, main_branch
 
     ref_code, ref_output = run_git(["symbolic-ref", "HEAD", f"refs/heads/{main_branch}"], path)
     if ref_code != 0:
         msg = ref_output or "git symbolic-ref failed after git init"
-        return "error", msg
+        return "error", msg, main_branch
 
-    return "created", f"initialized with git init and HEAD -> {main_branch}"
+    return "created", f"initialized with git init and HEAD -> {main_branch}", main_branch
 
 
 def parse_simple_key_value(content: str) -> dict[str, str]:
@@ -773,10 +788,34 @@ def handle_init(args: argparse.Namespace, script_root: Path) -> int:
     task_state_content = with_updated_task_state_template(
         task_state_src.read_text(encoding="utf-8"), today
     )
+
+    effective_git_branch = args.git_main_branch
+    git_status = "skipped"
+    git_note = "git initialization skipped by --no-git"
+    if not args.no_git:
+        if args.dry_run:
+            if is_git_repo(target_root):
+                effective_git_branch = get_git_head_branch(target_root) or args.git_main_branch
+                git_status = "exists"
+                git_note = f"git repository already exists (HEAD={effective_git_branch})"
+            else:
+                git_status = "planned"
+                git_note = (
+                    "would initialize git repository with default branch "
+                    f"'{args.git_main_branch}' if needed"
+                )
+        else:
+            git_status, git_note, effective_git_branch = ensure_git_repo(
+                target_root, args.git_main_branch
+            )
+            if git_status == "error":
+                print(f"[ERROR] git initialization failed: {git_note}")
+                return 1
+
     git_state_content = with_updated_git_state_template(
         git_state_src.read_text(encoding="utf-8"),
         today=today,
-        branch=args.git_main_branch,
+        branch=effective_git_branch,
         enabled=not args.no_git,
     )
 
@@ -804,18 +843,6 @@ def handle_init(args: argparse.Namespace, script_root: Path) -> int:
         args.dry_run,
         stats,
     )
-
-    git_status = "skipped"
-    git_note = "git initialization skipped by --no-git"
-    if not args.no_git:
-        if args.dry_run:
-            git_status = "planned"
-            git_note = f"would initialize git repository with default branch '{args.git_main_branch}' if needed"
-        else:
-            git_status, git_note = ensure_git_repo(target_root, args.git_main_branch)
-            if git_status == "error":
-                print(f"[ERROR] git initialization failed: {git_note}")
-                return 1
 
     copy_file(
         source_templates / "tasks-template.md",

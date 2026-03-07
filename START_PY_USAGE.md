@@ -68,6 +68,7 @@ python3 start.py init --undo
 - `_LLM/git_state.yaml`：Git 自动提交策略状态文件。
 - 默认会在当前目录检查并初始化 Git 仓库：
   - 已存在仓库：不重复初始化
+  - 已存在仓库：`git_state.default_branch` 将对齐当前仓库 `HEAD` 分支
   - 不存在仓库：创建并设置默认分支（默认 `main`）
 - 可用 `--no-git` 跳过初始化。
 
@@ -150,3 +151,26 @@ python3 start.py install --list
 ```
 
 确认名称后再安装或卸载。
+
+## 6. 配套自动化脚本
+
+- 调度当前阶段技能：
+
+```bash
+python3 scripts/run_workflow.py dispatch
+```
+
+- 执行阶段出口 hook（例如任务完成后自动 git 提交）：
+
+```bash
+python3 scripts/run_workflow.py hook --event task_completed
+python3 scripts/run_workflow.py hook --event issue_resolved --issue-id Q20260307-01
+python3 scripts/run_workflow.py hook --event release_checkpoint --release-tag v1.2.0
+```
+
+- 校验状态机与阶段门禁：
+
+```bash
+python3 scripts/validate_workflow_state.py
+python3 scripts/validate_workflow_state.py --next-stage implementation
+```

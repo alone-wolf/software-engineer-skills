@@ -17,7 +17,7 @@
 简要评估：
 
 - 优点：模块化程度高、流程可追踪、对单人开发足够轻量。
-- 风险点：目前是规范与模板为主，缺少自动化脚本（如状态校验器、任务解析器）来强制执行规则。
+- 风险点：已提供基础自动化脚本，但仍需按项目实际补充更细粒度校验（例如任务依赖约束、覆盖率门禁）。
 - 适用性：非常适合作为“AI 工程流程标准骨架”，可直接复制到新项目使用。
 
 ## 目录结构
@@ -181,6 +181,17 @@ idea-clarification-skill
 
 完整参数说明见 `START_PY_USAGE.md`。
 
+## 流程自动化脚本
+
+项目已提供轻量执行脚本：
+
+1. `python3 scripts/run_workflow.py dispatch`
+   - 读取 `_LLM/project_state.yaml.current_stage` 并写回 `active_skill`。
+2. `python3 scripts/run_workflow.py hook --event task_completed`
+   - 执行阶段出口 hook（当前内置 `git-commit-push-skill`）。
+3. `python3 scripts/validate_workflow_state.py --next-stage implementation`
+   - 校验状态机阶段合法性、关键文档门禁与 release 阶段高优先级 issue 阻塞。
+
 ## Codex 操作规约（建议强制）
 
 1. 开始任务前必须先读状态文件和 docs。
@@ -192,8 +203,8 @@ idea-clarification-skill
 ## 下一步建议
 
 1. 增加自动化脚本：
-   - `validate_state.py`（校验阶段和依赖资产）
-   - `sync_task_state.py`（自动同步任务状态）
+   - `scripts/run_workflow.py`（调度与阶段出口 hook）
+   - `scripts/validate_workflow_state.py`（状态机与门禁校验）
    - `python3 scripts/check_skill_versions.py`（校验 cluster_version 一致性）
 2. 增加质量门禁：
    - pre-commit 检查 `project_state.yaml` 是否更新
