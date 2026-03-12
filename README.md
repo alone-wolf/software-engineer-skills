@@ -151,13 +151,13 @@ idea-clarification-skill
    - `docs/problem.md`
    - `docs/spec.md`
    - `docs/architecture.md`
-   - `docs/tasks.md`
+   - `docs/tasks.md`（推荐每个任务包含 `done_criteria` 与 `depends_on`）
 4. 每次 Codex Session 固定流程：
    - 读取 `_LLM/project_state.yaml`
-   - Dispatcher 选择 Skill
+   - 运行 `python3 scripts/run_workflow.py dispatch` 选择当前 Skill
    - 按 Task 实现/审查/测试
    - 发现问题写入 `docs_issue/`（文件名使用 `<status>__<issue_id>__<summary>.md`）
-   - 在阶段出口使用 `git-commit-push-skill` 自动 commit（push 按策略）
+   - 在阶段出口运行 `python3 scripts/run_workflow.py hook --event <event>` 触发自动 commit（push 按策略）
    - 回写三个 state 文件
 
 ## 统一脚本入口

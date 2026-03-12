@@ -67,10 +67,20 @@ python3 start.py init --undo
 
 - `_LLM/git_state.yaml`：Git 自动提交策略状态文件。
 - 默认会在当前目录检查并初始化 Git 仓库：
-  - 已存在仓库：不重复初始化
-  - 已存在仓库：`git_state.default_branch` 将对齐当前仓库 `HEAD` 分支
+  - 已存在仓库：不重复初始化，且 `git_state.default_branch` 会对齐当前仓库 `HEAD` 分支
   - 不存在仓库：创建并设置默认分支（默认 `main`）
 - 可用 `--no-git` 跳过初始化。
+
+### 2.6 tasks 模板建议
+
+`docs/tasks.md` 建议按模板增加结构化字段，便于 `task-engine` 做确定性调度：
+
+```text
+- [ ] task_03 实现 websocket 鉴权
+  - done_criteria:
+    - websocket 连接必须校验 token 且拒绝过期令牌
+  - depends_on: [task_02]
+```
 
 ## 3. install 模式（全局 skills 安装）
 

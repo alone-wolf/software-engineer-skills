@@ -9,7 +9,7 @@ task-engine
 ## Cluster Identity
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
-- skill_version: `1.0.0`
+- skill_version: `1.1.0`
 - cluster_version: `1.2.0`
 
 ## Purpose
@@ -25,6 +25,7 @@ task-engine
 - `docs/tasks.md`
 - `_LLM/task_state.yaml`
 - `_LLM/project_state.yaml`
+- Optional task metadata: `done_criteria`, `depends_on`
 
 ## Outputs
 - Updated `_LLM/task_state.yaml`
@@ -35,18 +36,21 @@ task-engine
 ## Operating Procedure
 1. Parse `docs/tasks.md` checkboxes and task IDs.
 2. Read `_LLM/task_state.yaml` for current progress.
-3. Select current executable task:
-4. Prefer existing `in_progress` task.
-5. Else choose first unchecked task.
-6. Mark state as `in_progress` and set `current_task`.
-7. After implementation/test confirmation, move task to `completed_tasks` and choose next.
-8. Sync `current_task` back to `_LLM/project_state.yaml`.
-9. When a task transitions to completed, call `git-commit-push-skill`.
+3. Validate task dependencies (`depends_on`) against `completed_tasks`.
+4. Select current executable task:
+5. Prefer existing `in_progress` task.
+6. Else choose first unchecked task with satisfied dependencies.
+7. Mark state as `in_progress` and set `current_task`.
+8. After implementation/test confirmation, move task to `completed_tasks` and choose next.
+9. Sync `current_task` back to `_LLM/project_state.yaml`.
+10. When a task transitions to completed, execute:
+11. `python3 scripts/run_workflow.py hook --event task_completed --project-root <project_root>`
 
 ## Constraints
 - Do not execute tasks absent from `docs/tasks.md`.
 - Do not mark task complete without evidence (code/tests/docs updates).
 - Keep task IDs stable; avoid free-text renaming mid-iteration.
+- Do not pick tasks whose `depends_on` prerequisites are unfinished.
 
 ## Examples
 - Input: unchecked `task_03` is first pending task.

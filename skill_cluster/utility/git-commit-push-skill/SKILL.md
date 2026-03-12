@@ -9,7 +9,7 @@ git-commit-push-skill
 ## Cluster Identity
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
-- skill_version: `1.0.0`
+- skill_version: `1.1.0`
 - cluster_version: `1.2.0`
 
 ## Purpose
@@ -21,6 +21,8 @@ git-commit-push-skill
 - After `task-engine` marks a task completed.
 - After `issue-engine` transitions issue to `resolved`.
 - During `release-management-skill` for release commits.
+- Prefer execution through workflow hook entry:
+- `python3 scripts/run_workflow.py hook --event <event> --project-root <project_root>`
 
 ## Inputs
 - `git status --short` output

@@ -9,7 +9,7 @@ software-engineering-workflow
 ## Cluster Identity
 - cluster_marker: `se-skill-cluster`
 - cluster_name: `software-engineering-skill-cluster`
-- skill_version: `1.1.0`
+- skill_version: `1.2.0`
 - cluster_version: `1.2.0`
 
 ## Purpose
@@ -36,18 +36,22 @@ software-engineering-workflow
 
 ## Operating Procedure
 1. Read `_LLM/project_state.yaml` and identify `current_stage`.
-2. Validate mandatory artifacts for current stage.
-3. If preconditions fail, stop transition and emit remediation actions.
-4. Select next stage according to state machine rules.
-5. Update `active_skill`, `last_updated`, `notes`, and optional `current_stage`.
-6. Hand off to `skill-dispatcher` for concrete skill execution.
-7. At stage exit gates (task completed / issue resolved / release checkpoint), trigger `git-commit-push-skill`.
+2. Validate mandatory artifacts and transition legality:
+3. `python3 scripts/validate_workflow_state.py --project-root <project_root> [--next-stage <stage>]`
+4. If preconditions fail, stop transition and emit remediation actions.
+5. Select next stage according to state machine rules.
+6. Update `active_skill`, `last_updated`, `notes`, and optional `current_stage`.
+7. Hand off to `skill-dispatcher` for concrete skill execution:
+8. `python3 scripts/run_workflow.py dispatch --project-root <project_root>`
+9. At stage exit gates (task completed / issue resolved / release checkpoint), execute hooks:
+10. `python3 scripts/run_workflow.py hook --event <event> --project-root <project_root>`
 
 ## Constraints
 - Do not infer stage from file existence alone.
 - Do not bypass `requirements` or `task_planning` before implementation.
 - Route review/testing defects to `issue-engine` before release and enforce filename-driven issue states.
 - Respect `_LLM/git_state.yaml.push_mode`; do not force push when remote is unavailable.
+- Stage transition must pass validator checks before being persisted.
 
 ## Examples
 - Input: `current_stage: task_planning` and `docs/tasks.md` ready.
